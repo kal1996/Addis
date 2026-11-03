@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -46,6 +45,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+import { apiFetch } from "@/lib/api";
+
 type Supplier = {
   id: number;
   companyName: string;
@@ -56,9 +57,6 @@ type Supplier = {
   verified: boolean;
   createdAt: string;
 };
-
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 type SortOption = "newest" | "name" | "city";
 
@@ -96,7 +94,7 @@ export default function SuppliersPage() {
     setError("");
 
     try {
-      const response = await fetch(`${API_URL}/api/suppliers`, {
+      const response = await apiFetch("/api/suppliers", {
         method: "GET",
         headers: {
           Accept: "application/json",
@@ -135,36 +133,57 @@ export default function SuppliersPage() {
     void loadSuppliers();
   }, [loadSuppliers]);
 
-  const handleAddSupplier = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleAddSupplier = async (
+    event: React.FormEvent<HTMLFormElement>
+  ) => {
     event.preventDefault();
     setSavingSupplier(true);
     setFormError("");
     setFormSuccess("");
 
     try {
-      const response = await fetch(`${API_URL}/api/suppliers`, {
+      const response = await apiFetch("/api/suppliers", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
         },
-        body: JSON.stringify({ ...newSupplier, verified: false }),
+        body: JSON.stringify({
+          ...newSupplier,
+          verified: false,
+        }),
       });
 
       if (!response.ok) {
         if (response.status === 409) {
           throw new Error("That email address is already registered.");
         }
+
         const message = await response.text();
-        throw new Error(message || `Could not add supplier (HTTP ${response.status}).`);
+
+        throw new Error(
+          message || `Could not add supplier (HTTP ${response.status}).`
+        );
       }
 
       setFormSuccess("Supplier added successfully.");
-      setNewSupplier({ companyName: "", contactName: "", email: "", phone: "", city: "" });
+
+      setNewSupplier({
+        companyName: "",
+        contactName: "",
+        email: "",
+        phone: "",
+        city: "",
+      });
+
       await loadSuppliers(true);
       setAddDialogOpen(false);
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Could not add supplier.");
+      setFormError(
+        err instanceof Error
+          ? err.message
+          : "Could not add supplier."
+      );
     } finally {
       setSavingSupplier(false);
     }
@@ -571,7 +590,7 @@ export default function SuppliersPage() {
                   <p className="mt-2 text-sm text-red-800">
                     Check that your Spring Boot backend is running at{" "}
                     <code className="rounded bg-red-100 px-1">
-                      {API_URL}
+                      {process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}
                     </code>
                     .
                   </p>
@@ -744,30 +763,129 @@ export default function SuppliersPage() {
 
             <form onSubmit={handleAddSupplier} className="space-y-4">
               <div className="space-y-1">
-                <label htmlFor="supplier-company" className="text-sm font-medium">Company name *</label>
-                <Input id="supplier-company" required maxLength={150} value={newSupplier.companyName} onChange={(event) => setNewSupplier({ ...newSupplier, companyName: event.target.value })} placeholder="Company name" />
+                <label htmlFor="supplier-company" className="text-sm font-medium">
+                  Company name *
+                </label>
+                <Input
+                  id="supplier-company"
+                  required
+                  maxLength={150}
+                  value={newSupplier.companyName}
+                  onChange={(event) =>
+                    setNewSupplier({
+                      ...newSupplier,
+                      companyName: event.target.value,
+                    })
+                  }
+                  placeholder="Company name"
+                />
               </div>
+
               <div className="space-y-1">
-                <label htmlFor="supplier-contact" className="text-sm font-medium">Contact person *</label>
-                <Input id="supplier-contact" required maxLength={100} value={newSupplier.contactName} onChange={(event) => setNewSupplier({ ...newSupplier, contactName: event.target.value })} placeholder="Full name" />
+                <label htmlFor="supplier-contact" className="text-sm font-medium">
+                  Contact person *
+                </label>
+                <Input
+                  id="supplier-contact"
+                  required
+                  maxLength={100}
+                  value={newSupplier.contactName}
+                  onChange={(event) =>
+                    setNewSupplier({
+                      ...newSupplier,
+                      contactName: event.target.value,
+                    })
+                  }
+                  placeholder="Full name"
+                />
               </div>
+
               <div className="space-y-1">
-                <label htmlFor="supplier-email" className="text-sm font-medium">Email *</label>
-                <Input id="supplier-email" type="email" required maxLength={254} value={newSupplier.email} onChange={(event) => setNewSupplier({ ...newSupplier, email: event.target.value })} placeholder="name@company.com" />
+                <label htmlFor="supplier-email" className="text-sm font-medium">
+                  Email *
+                </label>
+                <Input
+                  id="supplier-email"
+                  type="email"
+                  required
+                  maxLength={254}
+                  value={newSupplier.email}
+                  onChange={(event) =>
+                    setNewSupplier({
+                      ...newSupplier,
+                      email: event.target.value,
+                    })
+                  }
+                  placeholder="name@company.com"
+                />
               </div>
+
               <div className="space-y-1">
-                <label htmlFor="supplier-phone" className="text-sm font-medium">Phone *</label>
-                <Input id="supplier-phone" type="tel" required maxLength={30} value={newSupplier.phone} onChange={(event) => setNewSupplier({ ...newSupplier, phone: event.target.value })} placeholder="Phone number" />
+                <label htmlFor="supplier-phone" className="text-sm font-medium">
+                  Phone *
+                </label>
+                <Input
+                  id="supplier-phone"
+                  type="tel"
+                  required
+                  maxLength={30}
+                  value={newSupplier.phone}
+                  onChange={(event) =>
+                    setNewSupplier({
+                      ...newSupplier,
+                      phone: event.target.value,
+                    })
+                  }
+                  placeholder="Phone number"
+                />
               </div>
+
               <div className="space-y-1">
-                <label htmlFor="supplier-city" className="text-sm font-medium">City *</label>
-                <Input id="supplier-city" required maxLength={100} value={newSupplier.city} onChange={(event) => setNewSupplier({ ...newSupplier, city: event.target.value })} placeholder="e.g. Addis Ababa" />
+                <label htmlFor="supplier-city" className="text-sm font-medium">
+                  City *
+                </label>
+                <Input
+                  id="supplier-city"
+                  required
+                  maxLength={100}
+                  value={newSupplier.city}
+                  onChange={(event) =>
+                    setNewSupplier({
+                      ...newSupplier,
+                      city: event.target.value,
+                    })
+                  }
+                  placeholder="e.g. Addis Ababa"
+                />
               </div>
-              {formError && <p role="alert" className="text-sm text-red-600">{formError}</p>}
-              {formSuccess && <p role="status" className="text-sm text-emerald-700">{formSuccess}</p>}
+
+              {formError && (
+                <p role="alert" className="text-sm text-red-600">
+                  {formError}
+                </p>
+              )}
+
+              {formSuccess && (
+                <p role="status" className="text-sm text-emerald-700">
+                  {formSuccess}
+                </p>
+              )}
+
               <div className="flex justify-end gap-3 pt-2">
-                <Button type="button" variant="outline" onClick={() => setAddDialogOpen(false)} disabled={savingSupplier}>Cancel</Button>
-                <Button type="submit" className="bg-blue-700 text-white hover:bg-blue-800" disabled={savingSupplier}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setAddDialogOpen(false)}
+                  disabled={savingSupplier}
+                >
+                  Cancel
+                </Button>
+
+                <Button
+                  type="submit"
+                  className="bg-blue-700 text-white hover:bg-blue-800"
+                  disabled={savingSupplier}
+                >
                   {savingSupplier ? "Saving..." : "Save supplier"}
                 </Button>
               </div>

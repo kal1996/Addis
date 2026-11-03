@@ -99,18 +99,33 @@ export default function LoginPage() {
         return;
       }
 
-      if (!data.id || !data.email) {
+      // Check that the backend returned the required information.
+      if (!data.id || !data.email || !data.token) {
         setError(
           "The server response was incomplete. Please try again."
         );
         return;
       }
 
-      setMessage(`Welcome back, ${data.fullName}!`);
+      // Save the JWT token for authenticated API requests.
+      sessionStorage.setItem("addislink_token", data.token);
 
-      // The backend currently verifies credentials but does not
-      // issue a session or token. Do not store the password.
-      // We will add secure session handling in the next step.
+      // Save basic user information for this browser session.
+      sessionStorage.setItem(
+        "addislink_user",
+        JSON.stringify({
+          id: data.id,
+          fullName: data.fullName,
+          email: data.email,
+          accountType: data.accountType,
+        })
+      );
+
+      setMessage(`Welcome back, ${data.fullName}!`);
+setPassword("");
+
+window.location.href = "/suppliers";
+
     } catch {
       setError(
         "Cannot connect to the server. Check that the AddisLink backend is running."

@@ -33,7 +33,19 @@ public class User {
     @Column(nullable = false, length = 30)
     private String role = "USER";
 
-    @Column(nullable = false)
+    @Column(name = "account_type", nullable = false, length = 20)
+    private String accountType = "BUYER";
+
+    @Column(name = "business_name", length = 150)
+    private String businessName;
+
+    @Column(name = "business_address", length = 255)
+    private String businessAddress;
+
+    @Column(name = "business_category", length = 100)
+    private String businessCategory;
+
+    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
     public User() {
@@ -81,6 +93,38 @@ public class User {
 
     public void setRole(String role) {
         this.role = role;
+    }
+
+    public String getAccountType() {
+        return accountType;
+    }
+
+    public void setAccountType(String accountType) {
+        this.accountType = accountType;
+    }
+
+    public String getBusinessName() {
+        return businessName;
+    }
+
+    public void setBusinessName(String businessName) {
+        this.businessName = businessName;
+    }
+
+    public String getBusinessAddress() {
+        return businessAddress;
+    }
+
+    public void setBusinessAddress(String businessAddress) {
+        this.businessAddress = businessAddress;
+    }
+
+    public String getBusinessCategory() {
+        return businessCategory;
+    }
+
+    public void setBusinessCategory(String businessCategory) {
+        this.businessCategory = businessCategory;
     }
 
     public LocalDateTime getCreatedAt() {

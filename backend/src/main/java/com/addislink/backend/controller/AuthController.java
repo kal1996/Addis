@@ -3,6 +3,7 @@ package com.addislink.backend.controller;
 
 import com.addislink.backend.entity.User;
 import com.addislink.backend.service.AuthService;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -23,77 +24,135 @@ public class AuthController {
             String fullName,
             String email,
             String phone,
-            String password) {
-    }
+            String password,
+            String accountType,
+            String businessName,
+            String businessAddress,
+            String businessCategory
+    ) {}
 
     public record LoginRequest(
             String identifier,
-            String password) {
-    }
+            String password
+    ) {}
 
     public record AuthResponse(
             Long id,
             String fullName,
             String email,
             String phone,
-            String role) {
-    }
+            String role,
+            String accountType,
+            String businessName,
+            String businessAddress,
+            String businessCategory
+    ) {}
+
+    public record LoginResponse(
+            String token,
+            String tokenType,
+            Long id,
+            String fullName,
+            String email,
+            String phone,
+            String role,
+            String accountType,
+            String businessName,
+            String businessAddress,
+            String businessCategory
+    ) {}
 
     @PostMapping("/register")
     public ResponseEntity<?> register(
             @RequestBody RegisterRequest request) {
+
         try {
             if (request.fullName() == null
                     || request.email() == null
                     || request.phone() == null
                     || request.password() == null
+                    || request.accountType() == null
                     || request.fullName().isBlank()
                     || request.email().isBlank()
                     || request.phone().isBlank()
-                    || request.password().isBlank()) {
-                return ResponseEntity.badRequest()
-                        .body(Map.of("message",
-                                "All fields are required."));
+                    || request.password().isBlank()
+                    || request.accountType().isBlank()) {
+
+                return ResponseEntity.badRequest().body(
+                        Map.of("message",
+                                "All required fields must be completed.")
+                );
             }
 
             User user = authService.register(
                     request.fullName(),
                     request.email(),
                     request.phone(),
-                    request.password());
+                    request.password(),
+                    request.accountType(),
+                    request.businessName(),
+                    request.businessAddress(),
+                    request.businessCategory()
+            );
 
-            return ResponseEntity.status(HttpStatus.CREATED)
+            return ResponseEntity
+                    .status(HttpStatus.CREATED)
                     .body(toResponse(user));
 
         } catch (IllegalArgumentException ex) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("message", ex.getMessage()));
+            return ResponseEntity.badRequest().body(
+                    Map.of("message", ex.getMessage())
+            );
         }
     }
 
     @PostMapping("/login")
     public ResponseEntity<?> login(
             @RequestBody LoginRequest request) {
+
         try {
             if (request.identifier() == null
                     || request.password() == null
                     || request.identifier().isBlank()
                     || request.password().isBlank()) {
-                return ResponseEntity.badRequest()
-                        .body(Map.of("message",
-                                "Email/phone and password are required."));
+
+                return ResponseEntity.badRequest().body(
+                        Map.of("message",
+                                "Email/phone and password are required.")
+                );
             }
 
             User user = authService.login(
                     request.identifier(),
-                    request.password());
+                    request.password()
+            );
 
-            return ResponseEntity.ok(toResponse(user));
+            String token = authService.loginAndGenerateToken(
+                    request.identifier(),
+                    request.password()
+            );
+
+            return ResponseEntity.ok(new LoginResponse(
+                    token,
+                    "Bearer",
+                    user.getId(),
+                    user.getFullName(),
+                    user.getEmail(),
+                    user.getPhone(),
+                    user.getRole(),
+                    user.getAccountType(),
+                    user.getBusinessName(),
+                    user.getBusinessAddress(),
+                    user.getBusinessCategory()
+            ));
 
         } catch (IllegalArgumentException ex) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("message",
-                            "Invalid email/phone or password."));
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of(
+                            "message",
+                            "Invalid email/phone or password."
+                    ));
         }
     }
 
@@ -103,6 +162,11 @@ public class AuthController {
                 user.getFullName(),
                 user.getEmail(),
                 user.getPhone(),
-                user.getRole());
+                user.getRole(),
+                user.getAccountType(),
+                user.getBusinessName(),
+                user.getBusinessAddress(),
+                user.getBusinessCategory()
+        );
     }
 }

@@ -14,12 +14,15 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
 
     public AuthService(
             UserRepository userRepository,
-            PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder,
+            JwtService jwtService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.jwtService = jwtService;
     }
 
     @Transactional
@@ -27,10 +30,25 @@ public class AuthService {
             String fullName,
             String email,
             String phone,
-            String rawPassword) {
+            String rawPassword,
+            String accountType,
+            String businessName,
+            String businessAddress,
+            String businessCategory) {
 
-        String normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
+        String normalizedEmail =
+                email.trim().toLowerCase(Locale.ROOT);
+
         String normalizedPhone = phone.trim();
+
+        String normalizedAccountType =
+                accountType.trim().toUpperCase(Locale.ROOT);
+
+        if (!normalizedAccountType.equals("BUYER")
+                && !normalizedAccountType.equals("SUPPLIER")) {
+            throw new IllegalArgumentException(
+                    "Account type must be BUYER or SUPPLIER.");
+        }
 
         if (userRepository.existsByEmailIgnoreCase(normalizedEmail)) {
             throw new IllegalArgumentException(
@@ -42,21 +60,36 @@ public class AuthService {
                     "An account with this phone number already exists.");
         }
 
+        if (normalizedAccountType.equals("SUPPLIER")) {
+            if (businessName == null || businessName.isBlank()
+                    || businessAddress == null || businessAddress.isBlank()
+                    || businessCategory == null || businessCategory.isBlank()) {
+                throw new IllegalArgumentException(
+                        "Supplier business information is required.");
+            }
+        }
+
         User user = new User();
+
         user.setFullName(fullName.trim());
         user.setEmail(normalizedEmail);
         user.setPhone(normalizedPhone);
-
-        // Never save a plain-text password.
         user.setPassword(passwordEncoder.encode(rawPassword));
-
         user.setRole("USER");
+        user.setAccountType(normalizedAccountType);
+
+        if (normalizedAccountType.equals("SUPPLIER")) {
+            user.setBusinessName(businessName.trim());
+            user.setBusinessAddress(businessAddress.trim());
+            user.setBusinessCategory(businessCategory.trim());
+        }
 
         return userRepository.save(user);
     }
 
     @Transactional(readOnly = true)
     public User login(String identifier, String rawPassword) {
+
         String value = identifier.trim();
 
         User user = value.contains("@")
@@ -67,11 +100,27 @@ public class AuthService {
                     .orElseThrow(() -> new IllegalArgumentException(
                             "Invalid email/phone or password."));
 
-        if (!passwordEncoder.matches(rawPassword, user.getPassword())) {
+        if (!passwordEncoder.matches(
+                rawPassword, user.getPassword())) {
             throw new IllegalArgumentException(
                     "Invalid email/phone or password.");
         }
 
         return user;
+    }
+
+    @Transactional(readOnly = true)
+    public String loginAndGenerateToken(
+            String identifier,
+            String rawPassword) {
+
+        User user = login(identifier, rawPassword);
+
+        return jwtService.generateToken(
+                user.getEmail(),
+                user.getId(),
+                user.getAccountType(),
+                user.getRole()
+        );
     }
 }

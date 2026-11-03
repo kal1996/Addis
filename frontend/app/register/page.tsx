@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, type FormEvent, type ReactNode } from "react";
@@ -13,7 +12,6 @@ import {
   Circle,
   Eye,
   EyeOff,
-  Fingerprint,
   LockKeyhole,
   Mail,
   MapPin,
@@ -33,7 +31,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 
 type AccountType = "buyer" | "supplier";
 
@@ -80,10 +77,6 @@ function emailIsValid(value: string) {
 function phoneIsValid(value: string) {
   const digits = value.replace(/\D/g, "");
   return digits.length >= 9 && digits.length <= 15;
-}
-
-function faydaIsValid(value: string) {
-  return /^\d{12}$/.test(value.trim());
 }
 
 function FieldLabel({
@@ -138,9 +131,6 @@ export default function RegisterPage() {
   const [businessAddress, setBusinessAddress] = useState("");
   const [businessCategory, setBusinessCategory] = useState("");
 
-  const [faydaNumber, setFaydaNumber] = useState("");
-  const [faydaConsent, setFaydaConsent] = useState(false);
-
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -148,6 +138,7 @@ export default function RegisterPage() {
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const passwordChecks = passwordRules.map((rule) => ({
     ...rule,
@@ -155,6 +146,7 @@ export default function RegisterPage() {
   }));
 
   const passwordValid = passwordChecks.every((rule) => rule.passed);
+
   const passwordsMatch =
     confirmPassword.length > 0 && password === confirmPassword;
 
@@ -163,7 +155,7 @@ export default function RegisterPage() {
     setSuccess(false);
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     clearFeedback();
 
@@ -209,18 +201,53 @@ export default function RegisterPage() {
       return;
     }
 
-    if (faydaNumber && !faydaIsValid(faydaNumber)) {
-      setError("The Fayda number must contain exactly 12 digits.");
-      return;
-    }
+    setIsLoading(true);
 
-    if (faydaNumber && !faydaConsent) {
-      setError("Please provide consent before submitting your Fayda number.");
-      return;
-    }
+    try {
+      const apiUrl =
+        process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
-    // Prototype only: no database or authentication service is connected.
-    setSuccess(true);
+      const response = await fetch(`${apiUrl}/api/auth/register`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          fullName: fullName.trim(),
+          email: email.trim(),
+          phone: phone.trim(),
+          password,
+          accountType: accountType.toUpperCase(),
+          businessName:
+            accountType === "supplier" ? businessName.trim() : null,
+          businessAddress:
+            accountType === "supplier" ? businessAddress.trim() : null,
+          businessCategory:
+            accountType === "supplier" ? businessCategory : null,
+        }),
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(
+          data?.message ||
+            data?.error ||
+            "Registration failed. Please check your details and try again."
+        );
+      }
+
+      setSuccess(true);
+      setError("");
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to connect to AddisLink. Please try again."
+      );
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -243,7 +270,6 @@ export default function RegisterPage() {
             </span>
           </Link>
 
-          {/* Use Link directly: no unsupported asChild prop */}
           <Link
             href="/"
             className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-teal-50 hover:text-teal-800"
@@ -431,7 +457,9 @@ export default function RegisterPage() {
                         clearFeedback();
                       }}
                       placeholder="Enter your full name"
-                      aria-invalid={fullName.length > 0 && !nameIsValid(fullName)}
+                      aria-invalid={
+                        fullName.length > 0 && !nameIsValid(fullName)
+                      }
                       className={`${inputClass} pl-11`}
                     />
                   </div>
@@ -602,77 +630,6 @@ export default function RegisterPage() {
                   </section>
                 )}
 
-                {/* Optional Fayda */}
-                <section className="rounded-2xl border border-slate-200 p-4 transition-colors hover:border-teal-200 sm:p-5">
-                  <div className="flex items-start gap-3">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
-                      <Fingerprint size={21} />
-                    </span>
-                    <div>
-                      <h3 className="font-bold text-slate-800">
-                        Fayda identification{" "}
-                        <span className="text-xs font-medium text-slate-400">
-                          (Optional)
-                        </span>
-                      </h3>
-                      <p className="mt-1 text-xs leading-5 text-slate-500">
-                        Format checking does not verify your identity.
-                        Providing this information is optional.
-                      </p>
-                    </div>
-                  </div>
-
-                  <Input
-                    id="faydaNumber"
-                    name="faydaNumber"
-                    inputMode="numeric"
-                    autoComplete="off"
-                    value={faydaNumber}
-                    onChange={(event) => {
-                      setFaydaNumber(
-                        event.target.value.replace(/\D/g, "").slice(0, 12)
-                      );
-                      clearFeedback();
-                    }}
-                    placeholder="12-digit Fayda number"
-                    aria-label="Optional Fayda number"
-                    aria-invalid={
-                      faydaNumber.length > 0 && !faydaIsValid(faydaNumber)
-                    }
-                    className={`${inputClass} mt-4`}
-                  />
-
-                  {faydaNumber.length > 0 && (
-                    <FieldFeedback
-                      valid={faydaIsValid(faydaNumber)}
-                      validText="12-digit format entered."
-                      invalidText={`${faydaNumber.length}/12 digits entered.`}
-                    />
-                  )}
-
-                  {faydaNumber.length > 0 && (
-                    <div className="mt-3 flex items-start gap-2.5">
-                      <Checkbox
-                        id="faydaConsent"
-                        checked={faydaConsent}
-                        onCheckedChange={(checked) => {
-                          setFaydaConsent(checked === true);
-                          clearFeedback();
-                        }}
-                        className="mt-0.5 data-[state=checked]:border-teal-700 data-[state=checked]:bg-teal-700"
-                      />
-                      <Label
-                        htmlFor="faydaConsent"
-                        className="cursor-pointer text-xs leading-5 text-slate-600"
-                      >
-                        I consent to providing this number for the intended
-                        verification process when an authorized integration
-                        becomes available.
-                      </Label>
-                    </div>
-                  )}
-                </section>
-
                 {/* Password */}
                 <div>
                   <FieldLabel htmlFor="password" required>
@@ -702,7 +659,9 @@ export default function RegisterPage() {
                     <button
                       type="button"
                       onClick={() => setShowPassword((visible) => !visible)}
-                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      aria-label={
+                        showPassword ? "Hide password" : "Show password"
+                      }
                       className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-500 transition hover:bg-teal-50 hover:text-teal-700"
                     >
                       {showPassword ? <EyeOff size={19} /> : <Eye size={19} />}
@@ -806,23 +765,35 @@ export default function RegisterPage() {
                     <div className="flex items-start gap-2">
                       <CheckCircle2 size={20} className="mt-0.5 shrink-0" />
                       <div>
-                        <p className="font-bold">Validation successful!</p>
-                        <p className="mt-1">
-                          Your details passed the basic checks. This is a
-                          prototype: your account has not been saved, and Fayda
-                          verification is not connected.
+                        <p className="font-bold">
+                          Account created successfully!
                         </p>
+                        <p className="mt-1">
+                          Your AddisLink account has been saved. You can now
+                          go to the login page and sign in.
+                        </p>
+                        <Link
+                          href="/login"
+                          className="mt-3 inline-flex items-center gap-2 font-bold text-teal-800 hover:underline"
+                        >
+                          Go to login <ArrowRight size={16} />
+                        </Link>
                       </div>
                     </div>
                   </div>
                 )}
 
-                {/* Submit button: shadcn/ui */}
+                {/* Submit button */}
                 <Button
                   type="submit"
-                  className="group h-12 w-full rounded-xl bg-teal-700 font-bold text-white shadow-lg shadow-teal-700/20 transition hover:-translate-y-0.5 hover:bg-teal-800 hover:shadow-xl focus-visible:ring-4 focus-visible:ring-teal-200"
+                  disabled={isLoading || success}
+                  className="group h-12 w-full rounded-xl bg-teal-700 font-bold text-white shadow-lg shadow-teal-700/20 transition hover:-translate-y-0.5 hover:bg-teal-800 hover:shadow-xl focus-visible:ring-4 focus-visible:ring-teal-200 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  Create account
+                  {isLoading
+                    ? "Creating account..."
+                    : success
+                      ? "Account created"
+                      : "Create account"}
                   <ArrowRight
                     size={19}
                     className="ml-2 transition-transform group-hover:translate-x-1"
